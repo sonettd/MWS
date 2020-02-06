@@ -1,0 +1,169 @@
+#this file contains the workflow for filtering the feature table to remove
+#mitochondria and chloroplast sequences, rarefy, and generate a wide range of
+#diversity metrics. run on qiime2 version 2019.10.
+
+#filter mitochondria and chloroplasts
+qiime taxa filter-table \
+--i-table output/raw_ft.qza \
+--i-taxonomy output/classification_taxonomy.qza \
+--p-exclude Chloroplast,mitochondria \
+--o-filtered-table output/filtered_table
+
+#generate taxa barplot
+qiime taxa barplot \
+--i-table output/filtered_table.qza \
+--i-taxonomy output/classification_taxonomy.qza \
+--m-metadata-file input/metadata.tsv \
+--o-visualization taxa_barplot
+
+#rarefy to 17,051
+qiime feature-table rarefy \
+--i-table output/filtered_table.qza \
+--p-sampling-depth 17051 \
+--o-rarefied-table output/rarefied_table
+
+#generate diversity metrics. This command will error out if the
+#output/core_metrics folder already exists.
+qiime diversity core-metrics-phylogenetic \
+--i-table output/rarefied_table.qza \
+--i-phylogeny output/rooted_tree.qza \
+--p-sampling-depth 17051 \
+--m-metadata-file input/metadata.tsv \
+--p-n-jobs 4 \
+--output-dir output/core_metrics
+
+#generate simpson evenness metric
+qiime diversity alpha \
+--i-table output/rarefied_table.qza \
+--p-metric simpson_e \
+--o-alpha-diversity output/simpson_evenness
+
+#run spearman correlation test between all categorical metadata columns with
+#fewer than 15 categories and sample richness
+qiime diversity alpha-group-significance \
+--i-alpha-diversity output/core_metrics/observed_otus_vector.qza \
+--m-metadata-file input/metadata.tsv \
+--o-visualization output/alpha_group_significance
+
+#run spearman correlation on all continuous metadata columns
+qiime diversity alpha-correlation \
+--i-alpha-diversity output/core_metrics/observed_otus_vector.qza \
+--m-metadata-file input/metadata.tsv \
+--o-visualization output/alpha_correlation
+
+#run a mantel test on each immune parameter and the bray-curtis distance matrix
+qiime diversity beta-correlation \
+--i-distance-matrix output/core_metrics/bray_curtis_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Tyrosine \
+--o-metadata-distance-matrix output/bc_Tyrosine_mantel_metadata \
+--o-mantel-scatter-visualization output/bc_Tyrosine_mantel
+
+qiime diversity beta-correlation \
+--i-distance-matrix output/core_metrics/bray_curtis_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Dopamine \
+--o-metadata-distance-matrix output/bc_Dopamine_mantel_metadata \
+--o-mantel-scatter-visualization output/bc_Dopamine_mantel
+
+qiime diversity beta-correlation \
+--i-distance-matrix output/core_metrics/bray_curtis_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column L_DOPA \
+--o-metadata-distance-matrix output/bc_L_DOPA_mantel_metadata \
+--o-mantel-scatter-visualization output/bc_L_DOPA_mantel
+
+qiime diversity beta-correlation \
+--i-distance-matrix output/core_metrics/bray_curtis_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Methylcatechol \
+--o-metadata-distance-matrix output/bc_Methylcatechol_mantel_metadata \
+--o-mantel-scatter-visualization output/bc_Methylcatechol_mantel
+
+qiime diversity beta-correlation \
+--i-distance-matrix output/core_metrics/bray_curtis_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Hydroquinone \
+--o-metadata-distance-matrix output/bc_Hydroquinone_mantel_metadata \
+--o-mantel-scatter-visualization output/bc_Hydroquinone_mantel
+
+#run a mantel test on each immune parameter and the weighted unifrac distance
+#matrix
+qiime diversity beta-correlation \
+--i-distance-matrix output/core_metrics/weighted_unifrac_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Tyrosine \
+--o-metadata-distance-matrix output/wu_Tyrosine_mantel_metadata \
+--o-mantel-scatter-visualization output/wu_Tyrosine_mantel
+
+qiime diversity beta-correlation \
+--i-distance-matrix output/core_metrics/weighted_unifrac_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Dopamine \
+--o-metadata-distance-matrix output/wu_Dopamine_mantel_metadata \
+--o-mantel-scatter-visualization output/wu_Dopamine_mantel
+
+qiime diversity beta-correlation \
+--i-distance-matrix output/core_metrics/weighted_unifrac_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column L_DOPA \
+--o-metadata-distance-matrix output/wu_L_DOPA_mantel_metadata \
+--o-mantel-scatter-visualization output/wu_L_DOPA_mantel
+
+qiime diversity beta-correlation \
+--i-distance-matrix output/core_metrics/weighted_unifrac_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Methylcatechol \
+--o-metadata-distance-matrix output/wu_Methylcatechol_mantel_metadata \
+--o-mantel-scatter-visualization output/wu_Methylcatechol_mantel
+
+qiime diversity beta-correlation \
+--i-distance-matrix output/core_metrics/weighted_unifrac_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Hydroquinone \
+--o-metadata-distance-matrix output/wu_Hydroquinone_mantel_metadata \
+--o-mantel-scatter-visualization output/wu_Hydroquinone_mantel
+
+#permanova and permdisp tests by group, for bray-curtis and weighted unifrac
+qiime diversity beta-group-significance \
+--i-distance-matrix output/core_metrics/bray_curtis_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Group --p-method permanova \
+--p-pairwise \
+--o-visualization output/bc_permanova
+
+qiime diversity beta-group-significance \
+--i-distance-matrix output/core_metrics/bray_curtis_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Group --p-method permdisp \
+--p-pairwise \
+--o-visualization output/bc_permdisp
+
+qiime diversity beta-group-significance \
+--i-distance-matrix output/core_metrics/weighted_unifrac_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Group --p-method permanova \
+--p-pairwise \
+--o-visualization output/wu_permanova
+
+qiime diversity beta-group-significance \
+--i-distance-matrix output/core_metrics/weighted_unifrac_distance_matrix.qza \
+--m-metadata-file input/metadata.tsv \
+--m-metadata-column Group --p-method permdisp \
+--p-pairwise \
+--o-visualization output/wu_permdisp
+
+#create a distance matrix from the immune parameter feature table
+qiime diversity beta \
+--i-table input/immune_ft.qza \
+--p-metric euclidean \
+--o-distance-matrix output/immune_distance_matrix
+
+#run a mantel test between the immune distance matrix and the weighted unifrac
+#distance matrix
+qiime diversity mantel \
+--i-dm1 output/core_metrics/weighted_unifrac_distance_matrix.qza \
+--i-dm2 output/immune_distance_matrix.qza \
+--p-label1 weighted_unifrac \
+--p-label2 immune \
+--o-visualization output/immune_wu_mantel

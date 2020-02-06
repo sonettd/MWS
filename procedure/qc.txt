@@ -1,0 +1,8 @@
+#qc sequences with dada2. run on qiime2 version 2019.10.
+
+qiime dada2 denoise-pyro \
+--i-demultiplexed-seqs output/trimmed_sequences.qza \
+--p-trunc-len 0 \
+--o-table output/raw_ft \
+--o-representative-sequences output/representative_sequences \
+--o-denoising-stats output/denoising_stats

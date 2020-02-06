@@ -1,0 +1,22 @@
+#this file contains the workflow to import the Mr. DNA forward read, demux, and
+#trim the sequences. run on qiime2 version 2019.10.
+
+#import the sequences
+qiime tools import \
+--type MultiplexedSingleEndBarcodeInSequence \
+--input-path input/seqs/ --output-path output/forward_multiplexed_seqs \
+--input-format MultiplexedSingleEndBarcodeInSequenceDirFmt
+
+#demultiplex the sequences
+qiime cutadapt demux-single \
+--i-seqs output/forward_multiplexed_seqs.qza \
+--m-barcodes-file input/metadata.tsv \
+--m-barcodes-column BarcodeSequence \
+--o-per-sample-sequences output/demultiplexed_sequences \
+--o-untrimmed-sequences output/untrimmed_sequences
+
+#trim sequences
+qiime cutadapt trim-single \
+--i-demultiplexed-sequences output/demultiplexed_sequences.qza \
+--p-front AGRGTTTGATCMTGGCTCAG \
+--o-trimmed-sequences output/trimmed_sequences

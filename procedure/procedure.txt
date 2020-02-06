@@ -1,0 +1,19 @@
+#this file contains the workflow for the MWS project in qiime command line
+#instructions, starting with importing the forward fastq file into the qza
+#format. it is designed to be run from from the main project directory, within a
+#conda environment. commands were run on qiime2 version 2019.10
+
+#import, demux, and trim sequences
+bash procedure/import_demux_trim.txt
+
+#qc sequences with dada2
+bash procedure/qc.txt
+
+#create rooted tree
+bash procedure/sepp.txt
+
+#create classification taxonomy (taxonomic annotation)
+bash procedure/vsearch.txt
+
+#filter chloroplast and mitochondria sequences from the feature table
+bash procedure/filter_and_diversity_metrics.txt
