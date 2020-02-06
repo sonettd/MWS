@@ -1,0 +1,50 @@
+#seattle MWS workflow
+#download R1 and R2 fastq files to 'input'
+#rename R1 to 'forward.fastq.gz' and R2 to 'reverse.fastq.gz
+#download mapping files to 'input'
+qiime tools import --type MultiplexedSingleEndBarcodeInSequence --input-path input/forward.fastq.gz --output-path input/seattle_brown_forward_multiplexed-seqs
+qiime cutadapt demux-single --i-seqs input/seattle_brown_forward_multiplexed-seqs.qza --m-barcodes-file input/seattle_brown_metadata.csv --m-barcodes-column BarcodeSequence --o-per-sample-sequences input/seattle_brown_forward_demultiplexed-seqs.qza --o-untrimmed-sequences input/seattle_brown_forward_untrimmed
+qiime cutadapt trim-single --i-demultiplexed-sequences input/seattle_brown_forward_demultiplexed-seqs.qza --p-front AGRGTTTGATCMTGGCTCAG --p-error-rate 0 --o-trimmed-sequences input/seattle_brown_forward_trimmed-seqs.qza
+
+#dada and deblur depend on high quality sequences and offer the choice to trim sequence length based on quality information. to see the quality visualization:
+qiime demux summarize --i-data input/seattle_brown_forward_trimmed-seqs.qza --o-visualization output/seattle_brown_demux
+
+#dada2 command. I'm not sure about the trimming/truncating numbers so I set them to zero. They're based off of the demux visualzation which shows quality info for the sequences, but i chose the numbers without evidence
+qiime dada2 denoise-pyro --i-demultiplexed-seqs input/seattle_brown_forward_demultiplexed-seqs.qza --p-trunc-len 0 --p-n-threads 4 --o-representative-sequences input/seattle_brown_rep-seqs-dada2.qza --o-table input/seattle_brown_ft.qza --o-denoising-stats input/seattle_brown_stats-dada2
+
+#run organelle removal
+wget -O "input/extended_seqs.qza" "https://www.dropbox.com/s/h6ogdyo7z4nks71/extended_seqs.qza?dl=0"
+wget -O "input/extended_taxonomy.qza" "https://www.dropbox.com/s/olnsze2hr0jzkk2/extended_taxonomy.qza?dl=0"
+#
+qiime feature-classifier classify-consensus-vsearch --i-query input/seattle_brown_rep-seqs-dada2.qza --i-reference-reads input/extended_seqs.qza --i-reference-taxonomy input/extended_taxonomy.qza --p-threads 16 --o-classification input/seattle_brown_classification_taxonomy.qza
+#
+qiime taxa barplot --i-table input/seattle_brown_ft.qza --i-taxonomy input/seattle_brown_classification_taxonomy.qza --m-metadata-file input/seattle_brown_metadata.csv --o-visualization output/seattle_brown_tbp_pre_removal
+#
+qiime taxa filter-table --i-table input/seattle_brown_ft.qza --i-taxonomy input/seattle_brown_classification_taxonomy.qza --p-exclude Chloroplast,Mitochondria --o-filtered-table input/seattle_brown_ft_no_chloro_no_mito.qza
+#
+qiime taxa barplot --i-table input/seattle_brown_ft_no_chloro_no_mito.qza --i-taxonomy input/seattle_brown_classification_taxonomy.qza --m-metadata-file input/seattle_brown_metadata.csv --o-visualization output/seattle_brown_tbp_post_removal
+#
+#sepp fragment insertion. This creates a rooted phylogenetic tree based on either the Greengenes (used below) or SILVA database, placing the sequences onto that tree. This command is memory-intensive; I wouldn't recommend trying it with less than 16G of RAM.
+wget -O "input/sepp-refs-gg-13-8.qza" "https://data.qiime2.org/2019.10/common/sepp-refs-gg-13-8.qza"
+qiime fragment-insertion sepp --i-representative-sequences input/seattle_brown_rep-seqs-dada2.qza --i-reference-database input/sepp-refs-gg-13-8.qza --p-threads 4 --o-tree input/seattle_brown_rooted_tree --o-placements input/seattle_brown_placements
+#with the rooted tree, we are able to perform phylogenetic diversity assessments. 17314 is the depth of the smallest sample, so was used as the sampling depth.
+qiime diversity core-metrics-phylogenetic --i-table input/seattle_brown_ft.qza --i-phylogeny input/seattle_brown_rooted_tree.qza --p-sampling-depth 17314 --m-metadata-file input/seattle_brown_metadata.csv --p-n-jobs 4 --output-dir output/seattle_brown_diversity_metrics
+#alternatively, we can examine alpha rarefaction curves for each sample.
+qiime diversity alpha-rarefaction --i-table input/seattle_brown_ft_no_chloro_no_mito.qza --i-phylogeny input/seattle_brown_rooted_tree.qza --p-max-depth 20000 --m-metadata-file input/seattle_brown_metadata.csv --p-steps 100 --p-iterations 10 --o-visualization output/seattle_brown_rarefaction_curve
+#statistical comparison of observed otus by group:
+qiime diversity alpha-group-significance --i-alpha-diversity output/seattle_brown_diversity_metrics/observed_otus_vector.qza --m-metadata-file input/seattle_brown_metadata.csv --o-visualization output/seattle_brown_a_group_sig_ootus
+#statisitical comparison of ootus compared to immunologic columns:
+qiime diversity alpha correlation --i-alpha-diversity output/seattle_brown_diversity_metrics/observed_otus_vector.qza --m-metadata-file input/seattle_brown_metadata.csv --o-visualization output/seattle_brown
+#statistical comparison of weighted unifrac by group
+qiime diversity beta-group-significance --i-distance-matrix output/seattle_brown_diversity_metrics/weighted_unifrac_distance_matrix.qza --m-metadata-file input/seattle_brown_metadata.csv --m-metadata-column Group --p-pairwise --o-visualization output/seattle_brown_beta_group_sig_permanova --p-method permanova
+qiime diversity beta-group-significance --i-distance-matrix output/seattle_brown_diversity_metrics/weighted_unifrac_distance_matrix.qza --m-metadata-file input/seattle_brown_metadata.csv --m-metadata-column Group --p-pairwise --o-visualization output/seattle_brown_beta_group_sig_permdisp --p-method permdisp
+#weighted unifrac vs immunologic columns
+qiime diversity beta-correlation --i-distance-matrix output/seattle_brown_diversity_metrics/weighted_unifrac_distance_matrix.qza --m-metadata-file input/seattle_brown_metadata.csv --output-dir output/dopamine_mantel --m-metadata-column Dopamine
+qiime diversity beta-correlation --i-distance-matrix output/seattle_brown_diversity_metrics/weighted_unifrac_distance_matrix.qza --m-metadata-file input/seattle_brown_metadata.csv --output-dir output/hydroquinone_mantel --m-metadata-column Hydroquinone
+qiime diversity beta-correlation --i-distance-matrix output/seattle_brown_diversity_metrics/weighted_unifrac_distance_matrix.qza --m-metadata-file input/seattle_brown_metadata.csv --output-dir output/l_dopa_mantel --m-metadata-column L_DOPA
+qiime diversity beta-correlation --i-distance-matrix output/seattle_brown_diversity_metrics/weighted_unifrac_distance_matrix.qza --m-metadata-file input/seattle_brown_metadata.csv --output-dir output/methylcatechol_mantel --m-metadata-column Methylcatechol
+qiime diversity beta-correlation --i-distance-matrix output/seattle_brown_diversity_metrics/weighted_unifrac_distance_matrix.qza --m-metadata-file input/seattle_brown_metadata.csv --output-dir output/tyrosine_mantel --m-metadata-column Tyrosine
+#after crafting the immunologic feature table by hand and importing to qiime2 ft we have to make a distance matrix to use for a mantel test
+qiime diversity beta --i-table input/immune_ft.qza --p-metric euclidean --o-distance-matrix output/immune_distance_matrix
+#run a mantel test against the immune dm and weighted unifrac:
+qiime tools diversity mantel --i-dm1 output/immune_distance_matrix.qza --i-dm2 output/seattle_brown_diversity_metrics/weighted_unifrac_distance_matrix.qza --p-label1 Immunologic --p-label2 weighted_unifrac --o-visualization output/immune_w_unifrac_mantel
