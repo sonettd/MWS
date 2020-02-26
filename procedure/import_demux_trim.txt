@@ -4,7 +4,8 @@
 #import the sequences
 qiime tools import \
 --type MultiplexedSingleEndBarcodeInSequence \
---input-path input/seqs/ --output-path output/forward_multiplexed_seqs \
+--input-path input/seqs/ \
+--output-path output/forward_multiplexed_seqs \
 --input-format MultiplexedSingleEndBarcodeInSequenceDirFmt
 
 #demultiplex the sequences
