@@ -1,14 +1,14 @@
 #this file contains the workflow to create a rooted tree for the samples. run on
-#qiime2 version 2019.10 using the gg 13-8 sepp reference available at
-# https://data.qiime2.org/2019.10/common/sepp-refs-gg-13-8.qza
+#qiime2 version 2019.10 using the silva 128 sepp reference available at
+#https://data.qiime2.org/2019.10/common/sepp-refs-silva-128.qza
 
 #download the reference
 wget \
--O "input/sepp-refs-gg-13-8.qza" \
-"https://data.qiime2.org/2019.10/common/sepp-refs-gg-13-8.qza"
+-O "input/sepp-refs-silva-128.qza" \
+"https://data.qiime2.org/2019.10/common/sepp-refs-silva-128.qza"
 
 qiime fragment-insertion sepp \
 --i-representative-sequences output/representative_sequences.qza \
---i-reference-database input/sepp-refs-gg-13-8.qza \
+--i-reference-database input/sepp-refs-silva-128.qza \
 --o-tree output/rooted_tree \
 --o-placements output/placements

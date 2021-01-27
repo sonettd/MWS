@@ -5,4 +5,4 @@ qiime feature-classifier classify-consensus-vsearch \
 --i-query output/representative_sequences.qza \
 --i-reference-reads input/reference_reads.qza \
 --i-reference-taxonomy input/reference_taxonomy.qza \
---o-classification output/classification_taxonomy \
+--o-classification output/classification_taxonomy

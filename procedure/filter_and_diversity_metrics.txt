@@ -14,7 +14,7 @@ qiime taxa barplot \
 --i-table output/filtered_table.qza \
 --i-taxonomy output/classification_taxonomy.qza \
 --m-metadata-file input/metadata.tsv \
---o-visualization taxa_barplot
+--o-visualization output/taxa_barplot
 
 #rarefy to 17,051
 qiime feature-table rarefy \
@@ -29,7 +29,7 @@ qiime diversity core-metrics-phylogenetic \
 --i-phylogeny output/rooted_tree.qza \
 --p-sampling-depth 17051 \
 --m-metadata-file input/metadata.tsv \
---p-n-jobs 4 \
+--p-n-jobs-or-threads auto \
 --output-dir output/core_metrics
 
 #generate simpson evenness metric
@@ -41,13 +41,13 @@ qiime diversity alpha \
 #run spearman correlation test between all categorical metadata columns with
 #fewer than 15 categories and sample richness
 qiime diversity alpha-group-significance \
---i-alpha-diversity output/core_metrics/observed_otus_vector.qza \
+--i-alpha-diversity output/core_metrics/observed_features_vector.qza \
 --m-metadata-file input/metadata.tsv \
 --o-visualization output/alpha_group_significance
 
 #run spearman correlation on all continuous metadata columns
 qiime diversity alpha-correlation \
---i-alpha-diversity output/core_metrics/observed_otus_vector.qza \
+--i-alpha-diversity output/core_metrics/observed_features_vector.qza \
 --m-metadata-file input/metadata.tsv \
 --o-visualization output/alpha_correlation
 
@@ -142,7 +142,8 @@ qiime diversity beta-group-significance \
 qiime diversity beta-group-significance \
 --i-distance-matrix output/core_metrics/weighted_unifrac_distance_matrix.qza \
 --m-metadata-file input/metadata.tsv \
---m-metadata-column Group --p-method permanova \
+--m-metadata-column Group \
+--p-method permanova \
 --p-pairwise \
 --o-visualization output/wu_permanova
 
@@ -153,17 +154,3 @@ qiime diversity beta-group-significance \
 --p-pairwise \
 --o-visualization output/wu_permdisp
 
-#create a distance matrix from the immune parameter feature table
-qiime diversity beta \
---i-table input/immune_ft.qza \
---p-metric euclidean \
---o-distance-matrix output/immune_distance_matrix
-
-#run a mantel test between the immune distance matrix and the weighted unifrac
-#distance matrix
-qiime diversity mantel \
---i-dm1 output/core_metrics/weighted_unifrac_distance_matrix.qza \
---i-dm2 output/immune_distance_matrix.qza \
---p-label1 weighted_unifrac \
---p-label2 immune \
---o-visualization output/immune_wu_mantel
